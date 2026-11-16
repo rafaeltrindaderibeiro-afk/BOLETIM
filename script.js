@@ -12,6 +12,11 @@ var CONFIG_ALUNO = CONFIG_ALUNO || {
 let pinSessao = null;
 let disciplinasAtuais = [];
 
+// Instâncias dos gráficos
+let graficoMedias = null;
+let graficoEvolucao = null;
+let graficoFaltas = null;
+
 // ========================================
 // DADOS FICTÍCIOS DO BOLETIM (PADRÃO/FALLBACK)
 // ========================================
@@ -342,6 +347,288 @@ function preencherResumo() {
 function atualizarTela() {
     preencherTabela();
     preencherResumo();
+    atualizarGraficos();
+}
+
+
+// ========================================
+// GRÁFICOS DO BOLETIM (CAMADA DE LEITURA)
+// ========================================
+
+function atualizarGraficoMedias() {
+    const canvas = document.getElementById("graficoMediasDisciplinas");
+    if (!canvas || typeof Chart === "undefined") return;
+
+    if (graficoMedias) {
+        graficoMedias.destroy();
+    }
+
+    const labels = disciplinasAtuais.map(d => d.disciplina);
+    const dadosMedias = disciplinasAtuais.map(d => {
+        const media = calcularMedia(d);
+        return media !== null ? Number(media.toFixed(1)) : null;
+    });
+
+    const coresFundo = dadosMedias.map((_, index) =>
+        index % 2 === 0 ? "#050505" : "#ffffff"
+    );
+    const coresBorda = dadosMedias.map((_, index) =>
+        index % 2 === 0 ? "#ffffff" : "#050505"
+    );
+
+    graficoMedias = new Chart(canvas, {
+        type: "bar",
+        data: {
+            labels: labels,
+            datasets: [{
+                label: "Média",
+                data: dadosMedias,
+                backgroundColor: coresFundo,
+                borderColor: coresBorda,
+                borderWidth: 2,
+                borderRadius: 6
+            }]
+        },
+        options: {
+            indexAxis: "y",
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    min: 0,
+                    max: 10,
+                    ticks: {
+                        color: "#29231f",
+                        font: { weight: "bold" }
+                    },
+                    grid: {
+                        color: "rgba(90, 56, 37, 0.12)"
+                    }
+                },
+                y: {
+                    ticks: {
+                        color: "#29231f",
+                        font: { size: 11, weight: "bold" }
+                    },
+                    grid: {
+                        display: false
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: "#050505",
+                    titleColor: "#ffffff",
+                    bodyColor: "#ffffff",
+                    borderColor: "#ffffff",
+                    borderWidth: 1,
+                    callbacks: {
+                        label: function(context) {
+                            const valor = context.raw;
+                            if (valor === null || valor === undefined) {
+                                return `${context.label}: Sem nota`;
+                            }
+                            return `${context.label}: ${Number(valor).toFixed(1).replace(".", ",")}`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function atualizarGraficoEvolucao() {
+    const canvas = document.getElementById("graficoEvolucaoTrimestres");
+    if (!canvas || typeof Chart === "undefined") return;
+
+    if (graficoEvolucao) {
+        graficoEvolucao.destroy();
+    }
+
+    function calcularMediaTrimestre(campoTri) {
+        const notasValidas = disciplinasAtuais
+            .map(d => normalizarNota(d[campoTri]))
+            .filter(n => n !== null);
+
+        if (notasValidas.length === 0) return null;
+
+        const soma = notasValidas.reduce((acc, n) => acc + n, 0);
+        return Number((soma / notasValidas.length).toFixed(1));
+    }
+
+    const mediasTrimestres = [
+        calcularMediaTrimestre("tri1"),
+        calcularMediaTrimestre("tri2"),
+        calcularMediaTrimestre("tri3")
+    ];
+
+    graficoEvolucao = new Chart(canvas, {
+        type: "line",
+        data: {
+            labels: ["1º Tri", "2º Tri", "3º Tri"],
+            datasets: [{
+                label: "Média Geral",
+                data: mediasTrimestres,
+                borderColor: "#050505",
+                backgroundColor: "rgba(255, 255, 255, 0.85)",
+                pointBackgroundColor: ["#050505", "#ffffff", "#050505"],
+                pointBorderColor: ["#ffffff", "#050505", "#ffffff"],
+                pointBorderWidth: 3,
+                pointRadius: 7,
+                pointHoverRadius: 9,
+                borderWidth: 3.5,
+                tension: 0.25,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    min: 0,
+                    max: 10,
+                    ticks: {
+                        color: "#29231f",
+                        font: { weight: "bold" }
+                    },
+                    grid: {
+                        color: "rgba(90, 56, 37, 0.12)"
+                    }
+                },
+                x: {
+                    ticks: {
+                        color: "#29231f",
+                        font: { weight: "bold" }
+                    },
+                    grid: {
+                        display: false
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: "#050505",
+                    titleColor: "#ffffff",
+                    bodyColor: "#ffffff",
+                    borderColor: "#ffffff",
+                    borderWidth: 1,
+                    callbacks: {
+                        label: function(context) {
+                            const valor = context.raw;
+                            if (valor === null || valor === undefined) {
+                                return `${context.label}: Sem notas`;
+                            }
+                            return `${context.label}: ${Number(valor).toFixed(1).replace(".", ",")}`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function atualizarGraficoFaltas() {
+    const canvas = document.getElementById("graficoFaltasTrimestres");
+    if (!canvas || typeof Chart === "undefined") return;
+
+    if (graficoFaltas) {
+        graficoFaltas.destroy();
+    }
+
+    let faltasTri1 = 0;
+    let faltasTri2 = 0;
+    let faltasTri3 = 0;
+
+    disciplinasAtuais.forEach(d => {
+        if (Array.isArray(d.faltas)) {
+            faltasTri1 += Number(d.faltas[0]) || 0;
+            faltasTri2 += Number(d.faltas[1]) || 0;
+            faltasTri3 += Number(d.faltas[2]) || 0;
+        }
+    });
+
+    const totalFaltas = faltasTri1 + faltasTri2 + faltasTri3;
+    const cardFaltas = document.getElementById("card-faltas");
+    const badgePerigo = document.getElementById("estadoFaltas");
+
+    if (totalFaltas >= 350) {
+        if (cardFaltas) cardFaltas.classList.add("estado-perigo");
+        if (badgePerigo) badgePerigo.style.display = "inline-block";
+    } else {
+        if (cardFaltas) cardFaltas.classList.remove("estado-perigo");
+        if (badgePerigo) badgePerigo.style.display = "none";
+    }
+
+    graficoFaltas = new Chart(canvas, {
+        type: "bar",
+        data: {
+            labels: ["1º Tri", "2º Tri", "3º Tri"],
+            datasets: [{
+                label: "Faltas",
+                data: [faltasTri1, faltasTri2, faltasTri3],
+                backgroundColor: ["#050505", "#ffffff", "#050505"],
+                borderColor: ["#ffffff", "#050505", "#ffffff"],
+                borderWidth: 2.5,
+                borderRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0,
+                        color: "#29231f",
+                        font: { weight: "bold" }
+                    },
+                    grid: {
+                        color: "rgba(90, 56, 37, 0.12)"
+                    }
+                },
+                x: {
+                    ticks: {
+                        color: "#29231f",
+                        font: { weight: "bold" }
+                    },
+                    grid: {
+                        display: false
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: "#050505",
+                    titleColor: "#ffffff",
+                    bodyColor: "#ffffff",
+                    borderColor: "#ffffff",
+                    borderWidth: 1,
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.label}: ${context.raw} faltas`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function atualizarGraficos() {
+    atualizarGraficoMedias();
+    atualizarGraficoEvolucao();
+    atualizarGraficoFaltas();
 }
 
 

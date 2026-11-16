@@ -121,6 +121,39 @@
 
             </section>
 
+            <!-- Área de Gráficos -->
+            <section class="area-graficos" aria-label="Gráficos de desempenho">
+
+                <article class="grafico-card grafico-card-medias">
+                    <div class="grafico-topo">
+                        <h2>Média por disciplina</h2>
+                    </div>
+                    <div class="grafico-container grafico-container-medias">
+                        <canvas id="graficoMediasDisciplinas"></canvas>
+                    </div>
+                </article>
+
+                <article class="grafico-card">
+                    <div class="grafico-topo">
+                        <h2>Evolução da média geral</h2>
+                    </div>
+                    <div class="grafico-container">
+                        <canvas id="graficoEvolucaoTrimestres"></canvas>
+                    </div>
+                </article>
+
+                <article class="grafico-card" id="card-faltas">
+                    <div class="grafico-topo">
+                        <h2>Faltas por trimestre</h2>
+                        <span id="estadoFaltas" class="badge-perigo" style="display: none;">Perigo</span>
+                    </div>
+                    <div class="grafico-container">
+                        <canvas id="graficoFaltasTrimestres"></canvas>
+                    </div>
+                </article>
+
+            </section>
+
             <!-- Tabela de notas -->
             <section class="tabela-secao">
 
@@ -160,6 +193,9 @@
     <footer>
         <p>Boletim Digital • Dados fictícios para demonstração</p>
     </footer>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <!-- Arquivo JavaScript -->
     <script src="script.js"></script>
